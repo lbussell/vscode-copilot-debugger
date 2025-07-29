@@ -79,19 +79,11 @@
         "displayName": "Get Variables",
         "toolReferenceName": "getVariables",
         "canBeReferencedInPrompt": true,
-        "userDescription": "Get a variable's value from the current debug session",
-        "modelDescription": "Retrieve the value and type of a variable from the current debug session when stopped at a breakpoint",
+        "userDescription": "Get all variables from the current debug session",
+        "modelDescription": "Retrieve a list of all variables and their values from the current debug session when stopped at a breakpoint",
         "inputSchema": {
           "type": "object",
-          "properties": {
-            "variableName": {
-              "type": "string",
-              "description": "Name of the variable to retrieve"
-            }
-          },
-          "required": [
-            "variableName"
-          ]
+          "properties": {}
         }
       }
     ]

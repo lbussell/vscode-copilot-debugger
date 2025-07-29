@@ -8,9 +8,7 @@ import {
   LanguageModelTextPart,
 } from 'vscode';
 
-export interface GetVariablesToolParameters {
-  variableName: string;
-}
+export interface GetVariablesToolParameters {}
 
 interface Thread {
   id: number;
@@ -34,7 +32,24 @@ interface Variable {
   name: string;
   value: string;
   type?: string;
+  evaluateName?: string;
   variablesReference: number;
+}
+
+interface VariableInfo {
+  name: string;
+  value: string;
+  type?: string;
+  isExpandable: boolean;
+}
+
+interface ScopeInfo {
+  name: string;
+  variables: VariableInfo[];
+}
+
+interface VariablesData {
+  scopes: ScopeInfo[];
 }
 
 export class GetVariablesTool
@@ -43,8 +58,6 @@ export class GetVariablesTool
   async invoke(
     options: LanguageModelToolInvocationOptions<GetVariablesToolParameters>
   ): Promise<LanguageModelToolResult> {
-    const variableName = options.input.variableName;
-
     try {
       // Check if there's an active debug session
       const activeSession = vscode.debug.activeDebugSession;
@@ -86,86 +99,60 @@ export class GetVariablesTool
         return this.createErrorResult('No scopes found in current frame');
       }
 
-      // Step 4: Search for the variable in all scopes
+      // Step 4: Get all variables from all scopes
+      const variablesData: VariablesData = { scopes: [] };
+
       for (const scope of scopesResponse.scopes) {
-        const variable = await this.findVariableInScope(
+        const scopeInfo = await this.getScopeInfo(
           activeSession,
           scope.variablesReference,
-          variableName
+          scope.name
         );
-
-        if (variable) {
-          const result = this.formatVariableResult(variable);
-          return this.createSuccessResult(result);
+        if (scopeInfo.variables.length > 0) {
+          variablesData.scopes.push(scopeInfo);
         }
       }
 
-      return this.createErrorResult(
-        `Variable '${variableName}' not found in current scope`
-      );
+      if (variablesData.scopes.length === 0) {
+        return this.createErrorResult('No variables found in current scope');
+      }
+
+      const result = JSON.stringify(variablesData, null, 2);
+      return this.createSuccessResult(result);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      return this.createErrorResult(`Failed to get variable: ${errorMessage}`);
+      return this.createErrorResult(`Failed to get variables: ${errorMessage}`);
     }
   }
 
-  private async findVariableInScope(
+  private async getScopeInfo(
     session: vscode.DebugSession,
     variablesReference: number,
-    targetName: string
-  ): Promise<Variable | null> {
+    scopeName: string
+  ): Promise<ScopeInfo> {
     try {
       const variablesResponse = await session.customRequest('variables', {
         variablesReference,
       });
 
       if (!variablesResponse.variables) {
-        return null;
+        return { name: scopeName, variables: [] };
       }
 
-      // Look for exact match first
-      const exactMatch = variablesResponse.variables.find(
-        (v: Variable) => v.name === targetName
+      const variables: VariableInfo[] = variablesResponse.variables.map(
+        (v: Variable) => ({
+          name: v.evaluateName,
+          value: v.value,
+          type: v.type,
+          expandable: v.variablesReference > 0,
+        })
       );
 
-      if (exactMatch) {
-        return exactMatch;
-      }
-
-      // If not found, recursively search in nested objects
-      for (const variable of variablesResponse.variables) {
-        if (variable.variablesReference > 0) {
-          const nestedResult = await this.findVariableInScope(
-            session,
-            variable.variablesReference,
-            targetName
-          );
-          if (nestedResult) {
-            return nestedResult;
-          }
-        }
-      }
-
-      return null;
+      return { name: scopeName, variables };
     } catch (error) {
-      return null;
+      return { name: scopeName, variables: [] };
     }
-  }
-
-  private formatVariableResult(variable: Variable): string {
-    let result = `Variable: ${variable.name}\n`;
-    result += `Value: ${variable.value}`;
-
-    if (variable.type) {
-      result += `\nType: ${variable.type}`;
-    }
-
-    if (variable.variablesReference > 0) {
-      result += '\n(Object with nested properties)';
-    }
-
-    return result;
   }
 
   private createSuccessResult(message: string): LanguageModelToolResult {
@@ -182,7 +169,7 @@ export class GetVariablesTool
     options: LanguageModelToolInvocationPrepareOptions<GetVariablesToolParameters>
   ): ProviderResult<vscode.PreparedToolInvocation> {
     return {
-      invocationMessage: `Getting variable '${options.input.variableName}' from debug session`,
+      invocationMessage: 'Getting all variables from debug session',
     };
   }
 }
