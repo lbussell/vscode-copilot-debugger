@@ -24,7 +24,8 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
   - `SetBreakpointTool` - Sets breakpoints at specified file/line locations
   - `StartDebuggerTool` - Starts debugging sessions with optional configuration
   - `WaitForBreakpointTool` - Waits for breakpoint hits using Debug Adapter Protocol monitoring
-  - `GetVariablesTool` - Retrieves variable values from active debug sessions using DAP
+  - `GetVariablesTool` - Retrieves all variables from active debug sessions using DAP
+  - `ExpandVariableTool` - Expands specific variables to show detailed contents and immediate children
 - **Tool registration**: Registers tools with VS Code's language model system via `vscode.lm.registerTool()`
 
 ### Key Architecture Patterns
@@ -42,7 +43,9 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
 - `src/setBreakpointTool.ts` - SetBreakpointTool class and interface
 - `src/startDebuggerTool.ts` - StartDebuggerTool class and interface
 - `src/waitForBreakpointTool.ts` - WaitForBreakpointTool class and interface (requires debug-tracker-vscode)
+- `src/debugUtils.ts` - Shared DAP interfaces, types, and DAPHelpers utility class
 - `src/getVariablesTool.ts` - GetVariablesTool class and interface
+- `src/expandVariableTool.ts` - ExpandVariableTool class and interface
 - `package.json` - Extension manifest with tool definitions and VS Code configuration
 - `out/` - Compiled JavaScript output (generated)
 - TypeScript configuration uses Node16 modules targeting ES2022
@@ -55,7 +58,8 @@ The extension contributes language model tools that allow Copilot to interact wi
 - **`set_breakpoint`** - Sets breakpoints by specifying file path and line number
 - **`start_debugger`** - Starts debugging sessions with optional configuration name
 - **`wait_for_breakpoint`** - Waits for the debugger to hit a breakpoint or stop execution
-- **`get_variables`** - Retrieves variable values from the current debug session when stopped
+- **`get_variables`** - Retrieves all variables from the current debug session when stopped
+- **`expand_variable`** - Expands a specific variable to show its detailed contents and immediate child properties
 
 Tools are automatically available to Copilot when the extension is active.
 
@@ -105,10 +109,20 @@ The debug tracker extension provides API services for monitoring debug sessions 
 
 - **Four-step DAP flow**: threads → stackTrace → scopes → variables requests
 - **Request chain**: Each step provides context for the next (threadId → frameId → variablesReference)
-- **Recursive traversal**: Variables with `variablesReference > 0` contain nested properties
+- **Single-level expansion**: Variables with `variablesReference > 0` can be expanded one level to avoid circular references
 - **Scope searching**: Must search all scopes (local, closure, global) to find variables
 - **Session state**: Debug session must be stopped/paused to access variable values
 - **Error handling**: Each DAP request can fail independently and requires proper error handling
+
+### Shared DAP Architecture
+
+- **Centralized utilities**: `src/debugUtils.ts` contains all shared DAP interfaces and helper functions
+- **DAPHelpers utility class**: Centralized DAP operations shared between GetVariablesTool and ExpandVariableTool
+- **Common interfaces**: Shared TypeScript interfaces (Thread, StackFrame, Scope, Variable, VariableInfo, etc.) exported from debugUtils
+- **Code reuse**: Both variable tools import and use the same methods for session validation, context retrieval, and variable resolution
+- **Consistent data structures**: All tools return structured JSON using the same VariableInfo format from debugUtils
+- **Single responsibility**: Each helper method handles one specific DAP operation for better maintainability
+- **Clean separation**: Tool-specific logic stays in tool files, shared logic centralized in debugUtils
 
 ## Code Organization
 

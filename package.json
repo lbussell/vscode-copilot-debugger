@@ -85,6 +85,26 @@
           "type": "object",
           "properties": {}
         }
+      },
+      {
+        "name": "expand_variable",
+        "displayName": "Expand Variable",
+        "toolReferenceName": "expandVariable",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Show detailed contents and immediate children of a specific variable",
+        "modelDescription": "Expand a specific variable to show its detailed contents and immediate child properties/elements when stopped at a breakpoint",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "variableName": {
+              "type": "string",
+              "description": "Name of the variable to expand"
+            }
+          },
+          "required": [
+            "variableName"
+          ]
+        }
       }
     ]
   },
