@@ -123,3 +123,7 @@ The debug tracker extension provides API services for monitoring debug sessions 
 - Provide clear installation instructions in error messages
 - Use try-catch blocks around async operations with proper cleanup
 - Distinguish between recoverable and non-recoverable errors
+
+## Workflow Guidance
+
+- **Always update CLAUDE.md when you complete a feature**
