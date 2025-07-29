@@ -39,6 +39,23 @@
             }
           }
         }
+      },
+      {
+        "name": "start_debugger",
+        "displayName": "Start Debugger",
+        "toolReferenceName": "startDebugger",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Start debugging session",
+        "modelDescription": "Start a debugging session",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "configuration": {
+              "type": "string",
+              "description": "Debug configuration name (optional, defaults to first available)"
+            }
+          }
+        }
       }
     ]
   },

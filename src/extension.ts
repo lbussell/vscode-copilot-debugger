@@ -36,7 +36,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 function registerTools(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
-		vscode.lm.registerTool('set_breakpoint', new SetBreakpointTool())
+		vscode.lm.registerTool('set_breakpoint', new SetBreakpointTool()),
+		vscode.lm.registerTool('start_debugger', new StartDebuggerTool())
 	);
 }
 
@@ -46,6 +47,10 @@ export function deactivate() {}
 interface SetBreakpointToolParameters {
 	file: string;
 	line: number;
+}
+
+interface StartDebuggerToolParameters {
+	configuration?: string;
 }
 
 class SetBreakpointTool implements LanguageModelTool<SetBreakpointToolParameters> {
@@ -74,6 +79,45 @@ class SetBreakpointTool implements LanguageModelTool<SetBreakpointToolParameters
 	prepareInvocation?(options: LanguageModelToolInvocationPrepareOptions<SetBreakpointToolParameters>): ProviderResult<vscode.PreparedToolInvocation> {
 		return {
 			invocationMessage: `Setting breakpoint at ${options.input.file} line ${options.input.line}`,
+		};
+	}
+}
+
+class StartDebuggerTool implements LanguageModelTool<StartDebuggerToolParameters> {
+	async invoke(options: LanguageModelToolInvocationOptions<StartDebuggerToolParameters>): Promise<LanguageModelToolResult> {
+		const configuration = options.input.configuration;
+
+		// Get the current workspace folder
+		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		if (!workspaceFolder) {
+			const result = 'No workspace folder is open. Cannot start debugger.';
+			const textPart = new LanguageModelTextPart(result);
+			return new LanguageModelToolResult([textPart]);
 		}
+
+		try {
+			// Start debugging with the specified configuration or let VS Code choose the default
+			const success = await vscode.debug.startDebugging(
+				workspaceFolder, 
+				configuration ?? ""
+			);
+			
+			const result = success 
+				? `Debugger started successfully${configuration ? ` with configuration "${configuration}"` : ''}`
+				: `Failed to start debugger${configuration ? ` with configuration "${configuration}"` : ''}`;
+			
+			const textPart = new LanguageModelTextPart(result);
+			return new LanguageModelToolResult([textPart]);
+		} catch (error) {
+			const result = `Error starting debugger: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			const textPart = new LanguageModelTextPart(result);
+			return new LanguageModelToolResult([textPart]);
+		}
+	}
+
+	prepareInvocation?(options: LanguageModelToolInvocationPrepareOptions<StartDebuggerToolParameters>): ProviderResult<vscode.PreparedToolInvocation> {
+		return {
+			invocationMessage: `Starting debugger${options.input.configuration ? ` with configuration "${options.input.configuration}"` : ''}`,
+		};
 	}
 }
