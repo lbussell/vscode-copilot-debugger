@@ -3,7 +3,12 @@
     "allow": [
       "Bash(npm run compile:*)",
       "Bash(git add:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:marketplace.visualstudio.com)",
+      "Bash(npm run format:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

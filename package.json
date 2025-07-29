@@ -56,6 +56,23 @@
             }
           }
         }
+      },
+      {
+        "name": "wait_for_breakpoint",
+        "displayName": "Wait for Breakpoint",
+        "toolReferenceName": "waitForBreakpoint",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Wait for the next breakpoint hit during debugging",
+        "modelDescription": "Wait for the debugger to hit a breakpoint or stop execution",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "type": "integer",
+              "description": "Optional timeout in seconds (default: 30)"
+            }
+          }
+        }
       }
     ]
   },
@@ -82,5 +99,8 @@
     "eslint-plugin-prettier": "^5.5.3",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "debug-tracker-vscode": "^0.0.15"
   }
 }

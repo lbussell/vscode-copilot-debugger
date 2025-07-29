@@ -23,6 +23,7 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
 - **Language Model Tools**: Classes implementing VS Code's `LanguageModelTool` interface
   - `SetBreakpointTool` - Sets breakpoints at specified file/line locations
   - `StartDebuggerTool` - Starts debugging sessions with optional configuration
+  - `WaitForBreakpointTool` - Waits for breakpoint hits using Debug Adapter Protocol monitoring
 - **Tool registration**: Registers tools with VS Code's language model system via `vscode.lm.registerTool()`
 
 ### Key Architecture Patterns
@@ -39,8 +40,9 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
 - `src/extension.ts` - Main extension logic, activation, and tool registration only
 - `src/setBreakpointTool.ts` - SetBreakpointTool class and interface
 - `src/startDebuggerTool.ts` - StartDebuggerTool class and interface
+- `src/waitForBreakpointTool.ts` - WaitForBreakpointTool class and interface (requires debug-tracker-vscode)
 - `package.json` - Extension manifest with tool definitions and VS Code configuration
-- `out/` - Compiled JavaScript output (generated)  
+- `out/` - Compiled JavaScript output (generated)
 - TypeScript configuration uses Node16 modules targeting ES2022
 - Uses camelCase naming convention for TypeScript files
 
@@ -50,8 +52,19 @@ The extension contributes language model tools that allow Copilot to interact wi
 
 - **`set_breakpoint`** - Sets breakpoints by specifying file path and line number
 - **`start_debugger`** - Starts debugging sessions with optional configuration name
+- **`wait_for_breakpoint`** - Waits for the debugger to hit a breakpoint or stop execution
 
 Tools are automatically available to Copilot when the extension is active.
+
+## Prerequisites
+
+This extension requires the **debug-tracker-vscode** extension to be installed for the `wait_for_breakpoint` tool to function:
+
+1. **Automatic Installation**: The extension will attempt to auto-install if not present
+2. **Manual Installation**: Install from VS Code marketplace: `mcu-debug.debug-tracker-vscode`
+3. **Command**: Use Quick Open (`Ctrl+P`) and search for "debug-tracker-vscode"
+
+The debug tracker extension provides API services for monitoring debug sessions and is required for breakpoint waiting functionality.
 
 ## Implementation Notes
 
@@ -64,6 +77,25 @@ Tools are automatically available to Copilot when the extension is active.
 - VS Code's `startDebugging()` requires 2+ arguments - use conditional logic for optional parameters
 - Always validate workspace folder exists before debugging operations
 
+## External Dependencies
+
+### debug-tracker-vscode Integration
+- **Dual dependency requirement**: Requires both NPM package and VS Code extension
+- **NPM package**: `debug-tracker-vscode` - Provides TypeScript types and API client
+- **VS Code extension**: `mcu-debug.debug-tracker-vscode` - Provides the actual debug tracking service
+- **API access**: Use `DebugTracker.getTrackerExtension('extension-name')` to get tracker instance
+- **Event handlers**: Must be async functions returning `Promise<void>`
+- **Resource cleanup**: Always unsubscribe from debug events to prevent memory leaks
+- **State handling**: Check current debug status immediately with `getSessionStatus()` before waiting
+- **Subscription pattern**: Use `wantCurrentStatus: true` to get immediate status when subscribing
+
+### Debug Adapter Protocol Monitoring
+- **Status monitoring**: Track `DebugSessionStatus` changes (Running → Stopped = breakpoint hit)
+- **Event filtering**: Can monitor specific debug adapters or use `'*'` for all
+- **Session validation**: Always verify active debug session exists before monitoring
+- **Timeout handling**: Implement timeout mechanisms to prevent infinite waiting
+- **Error scenarios**: Handle debug session termination, extension unavailability, and API errors
+
 ## Code Organization
 
 - Keep `src/extension.ts` minimal - only activation, deactivation, and registration logic
@@ -71,3 +103,23 @@ Tools are automatically available to Copilot when the extension is active.
 - Use flat file structure in `src/` directory (no subdirectories for tools)
 - Export both interface and class from each tool file
 - Follow consistent patterns across all tool implementations
+
+## Advanced Patterns
+
+### Promise-based Tool Implementation
+- For tools that wait for events (like `wait_for_breakpoint`), return a Promise from `invoke()`
+- Use proper Promise constructor with resolve/reject for event-driven operations
+- Implement cleanup logic in both success and error paths
+- Handle race conditions between timeouts and actual events
+
+### Event-driven Debug Monitoring
+- Always check current state before subscribing to avoid missing already-occurred events
+- Use subscription IDs for proper cleanup to prevent memory leaks
+- Handle multiple possible outcomes (success, timeout, session termination)
+- Provide meaningful feedback messages for all scenarios
+
+### Error Handling Best Practices
+- Gracefully handle external dependency unavailability (debug tracker extension)
+- Provide clear installation instructions in error messages
+- Use try-catch blocks around async operations with proper cleanup
+- Distinguish between recoverable and non-recoverable errors
