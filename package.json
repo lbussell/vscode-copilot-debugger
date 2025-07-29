@@ -1,0 +1,64 @@
+{
+  "name": "copilot-debugger",
+  "displayName": "Copilot Debugger",
+  "description": "Debug your code with GitHub Copilot",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.102.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "copilot-debugger.helloWorld",
+        "title": "Hello World"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "set_breakpoint",
+        "displayName": "Set Breakpoint",
+        "toolReferenceName": "setBreakpoint",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Set breakpoints",
+        "modelDescription": "Set a breakpoint",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "File path to set the breakpoint in"
+            },
+            "line": {
+              "type": "integer",
+              "description": "Line number to set the breakpoint at"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.102.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
