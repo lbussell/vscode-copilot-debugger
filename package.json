@@ -73,6 +73,38 @@
             }
           }
         }
+      },
+      {
+        "name": "get_variables",
+        "displayName": "Get Variables",
+        "toolReferenceName": "getVariables",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Get all variables from the current debug session",
+        "modelDescription": "Retrieve a list of all variables and their values from the current debug session when stopped at a breakpoint",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "expand_variable",
+        "displayName": "Expand Variable",
+        "toolReferenceName": "expandVariable",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Show detailed contents and immediate children of a specific variable",
+        "modelDescription": "Expand a specific variable to show its detailed contents and immediate child properties/elements when stopped at a breakpoint",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "variableName": {
+              "type": "string",
+              "description": "Name of the variable to expand"
+            }
+          },
+          "required": [
+            "variableName"
+          ]
+        }
       }
     ]
   },

@@ -24,6 +24,8 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
   - `SetBreakpointTool` - Sets breakpoints at specified file/line locations
   - `StartDebuggerTool` - Starts debugging sessions with optional configuration
   - `WaitForBreakpointTool` - Waits for breakpoint hits using Debug Adapter Protocol monitoring
+  - `GetVariablesTool` - Retrieves all variables from active debug sessions using DAP
+  - `ExpandVariableTool` - Expands specific variables to show detailed contents and immediate children
 - **Tool registration**: Registers tools with VS Code's language model system via `vscode.lm.registerTool()`
 
 ### Key Architecture Patterns
@@ -41,6 +43,9 @@ This is a VS Code extension that integrates with GitHub Copilot to provide debug
 - `src/setBreakpointTool.ts` - SetBreakpointTool class and interface
 - `src/startDebuggerTool.ts` - StartDebuggerTool class and interface
 - `src/waitForBreakpointTool.ts` - WaitForBreakpointTool class and interface (requires debug-tracker-vscode)
+- `src/debugUtils.ts` - Shared DAP interfaces, types, and DAPHelpers utility class
+- `src/getVariablesTool.ts` - GetVariablesTool class and interface
+- `src/expandVariableTool.ts` - ExpandVariableTool class and interface
 - `package.json` - Extension manifest with tool definitions and VS Code configuration
 - `out/` - Compiled JavaScript output (generated)
 - TypeScript configuration uses Node16 modules targeting ES2022
@@ -53,6 +58,8 @@ The extension contributes language model tools that allow Copilot to interact wi
 - **`set_breakpoint`** - Sets breakpoints by specifying file path and line number
 - **`start_debugger`** - Starts debugging sessions with optional configuration name
 - **`wait_for_breakpoint`** - Waits for the debugger to hit a breakpoint or stop execution
+- **`get_variables`** - Retrieves all variables from the current debug session when stopped
+- **`expand_variable`** - Expands a specific variable to show its detailed contents and immediate child properties
 
 Tools are automatically available to Copilot when the extension is active.
 
@@ -80,6 +87,7 @@ The debug tracker extension provides API services for monitoring debug sessions 
 ## External Dependencies
 
 ### debug-tracker-vscode Integration
+
 - **Dual dependency requirement**: Requires both NPM package and VS Code extension
 - **NPM package**: `debug-tracker-vscode` - Provides TypeScript types and API client
 - **VS Code extension**: `mcu-debug.debug-tracker-vscode` - Provides the actual debug tracking service
@@ -90,11 +98,31 @@ The debug tracker extension provides API services for monitoring debug sessions 
 - **Subscription pattern**: Use `wantCurrentStatus: true` to get immediate status when subscribing
 
 ### Debug Adapter Protocol Monitoring
+
 - **Status monitoring**: Track `DebugSessionStatus` changes (Running → Stopped = breakpoint hit)
 - **Event filtering**: Can monitor specific debug adapters or use `'*'` for all
 - **Session validation**: Always verify active debug session exists before monitoring
 - **Timeout handling**: Implement timeout mechanisms to prevent infinite waiting
 - **Error scenarios**: Handle debug session termination, extension unavailability, and API errors
+
+### Debug Adapter Protocol Variable Access
+
+- **Four-step DAP flow**: threads → stackTrace → scopes → variables requests
+- **Request chain**: Each step provides context for the next (threadId → frameId → variablesReference)
+- **Single-level expansion**: Variables with `variablesReference > 0` can be expanded one level to avoid circular references
+- **Scope searching**: Must search all scopes (local, closure, global) to find variables
+- **Session state**: Debug session must be stopped/paused to access variable values
+- **Error handling**: Each DAP request can fail independently and requires proper error handling
+
+### Shared DAP Architecture
+
+- **Centralized utilities**: `src/debugUtils.ts` contains all shared DAP interfaces and helper functions
+- **DAPHelpers utility class**: Centralized DAP operations shared between GetVariablesTool and ExpandVariableTool
+- **Common interfaces**: Shared TypeScript interfaces (Thread, StackFrame, Scope, Variable, VariableInfo, etc.) exported from debugUtils
+- **Code reuse**: Both variable tools import and use the same methods for session validation, context retrieval, and variable resolution
+- **Consistent data structures**: All tools return structured JSON using the same VariableInfo format from debugUtils
+- **Single responsibility**: Each helper method handles one specific DAP operation for better maintainability
+- **Clean separation**: Tool-specific logic stays in tool files, shared logic centralized in debugUtils
 
 ## Code Organization
 
@@ -107,22 +135,34 @@ The debug tracker extension provides API services for monitoring debug sessions 
 ## Advanced Patterns
 
 ### Promise-based Tool Implementation
+
 - For tools that wait for events (like `wait_for_breakpoint`), return a Promise from `invoke()`
 - Use proper Promise constructor with resolve/reject for event-driven operations
 - Implement cleanup logic in both success and error paths
 - Handle race conditions between timeouts and actual events
 
 ### Event-driven Debug Monitoring
+
 - Always check current state before subscribing to avoid missing already-occurred events
 - Use subscription IDs for proper cleanup to prevent memory leaks
 - Handle multiple possible outcomes (success, timeout, session termination)
 - Provide meaningful feedback messages for all scenarios
 
 ### Error Handling Best Practices
+
 - Gracefully handle external dependency unavailability (debug tracker extension)
 - Provide clear installation instructions in error messages
 - Use try-catch blocks around async operations with proper cleanup
 - Distinguish between recoverable and non-recoverable errors
+
+### DAP Variable Access Implementation
+
+- **Request chaining**: Use `session.customRequest()` for all DAP communication
+- **Context building**: Each request builds context for the next (threads → frames → scopes → variables)
+- **Default selection**: Use first available thread and topmost stack frame for simplicity
+- **Recursive search**: Implement recursive traversal for nested object properties
+- **Scope iteration**: Search all available scopes until variable is found
+- **Type safety**: Define TypeScript interfaces for all DAP response structures
 
 ## Workflow Guidance
 
