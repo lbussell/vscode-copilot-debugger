@@ -1,0 +1,18 @@
+# Build output
+out/
+*.js.map
+
+# Dependencies
+node_modules/
+
+# VS Code test files
+.vscode-test/
+
+# Logs
+*.log
+
+# Package files
+package-lock.json
+
+# Generated files
+*.d.ts
